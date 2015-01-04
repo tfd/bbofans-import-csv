@@ -1,0 +1,26 @@
+{
+  "name": "bbofans-import-csv",
+  "description": "Import csv into bbofans mongodb",
+  "keywords": [
+    "bbofans",
+    "csv",
+    "mongodb"
+  ],
+  "version": "0.0.1",
+  "private": false,
+  "author": "Ronald van Uffelen <ronald.vanuffelen@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tfd/bbofans-import-csv.git"
+  },
+  "main": "./import.js",
+  "dependencies": {
+    "async": "~0.9.0",
+    "moment": "^2.8.4",
+    "moment-range": "^1.0.5",
+    "mongoose": "~3.8.6",
+    "mongoose-validator": "~1.0.2",
+    "nifty-mongoose-types": "~0.0.3",
+    "underscore": "^1.7.0"
+  }
+}
