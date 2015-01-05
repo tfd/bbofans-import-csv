@@ -93,7 +93,7 @@ CSV.prototype._endOfString = function (c) {
 
 CSV.prototype.pushString = function (val) {
   // check for a valid date
-  if (moment(val).isValid()) {
+  if (moment(val, moment.ISO_8601).isValid()) {
     // nice: a date
     this.fields.push({type: 'date', value: moment(val).toDate()});
   }
@@ -139,7 +139,7 @@ CSV.prototype._parseValue = function (val) {
   }
 
   // Check for date
-  if (moment(val).isValid()) {
+  if (moment(val, moment.ISO_8601).isValid()) {
     // nice: a date
     return {type: 'date', value: moment(val).toDate()};
   }

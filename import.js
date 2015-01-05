@@ -32,13 +32,27 @@ var config = require('./config/config')[env];
 // connect to database
 require('./config/mongoose')(config);
 
-var r = fs.createReadStream(membersFileName);
-var c = new CsvParseStream();
-var m = new MongoWriteStream('Member');
-r.pipe(c).pipe(m);
+function processMembers(done) {
+  var r = fs.createReadStream(membersFileName);
+  var p = new CsvParseStream();
+  var w = new MongoWriteStream('Member');
+  r.pipe(p).pipe(w);
 
-m.on('finish', function () {
-  console.log('done');
-  process.exit(0);
+  w.on('finish', done);
+}
+
+function processTds(done) {
+  var r = fs.createReadStream(tdsFileName);
+  var p = new CsvParseStream();
+  var w = new MongoWriteStream('Td');
+  r.pipe(p).pipe(w);
+
+  w.on('finish', done);
+}
+
+processMembers(function () {
+  processTds(function () {
+    console.log('done');
+    process.exit(0);
+  });
 });
-
