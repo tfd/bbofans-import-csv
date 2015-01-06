@@ -5,9 +5,10 @@ var Writable = require('stream').Writable;
 var mongoose = require('mongoose');
 var moment = require('moment');
 var _ = require('underscore');
+var PasswordGenerator = require('password-generator');
 
 function sanitizeEmail(email) {
-  if (! email) {
+  if (!email) {
     // No email, generate one.
     return 'auto.generated.' + _.uniqueId() + '@dummy.com';
   }
@@ -64,7 +65,7 @@ function skillToString(skill) {
 
     case 2:
       return "Intermediate";
-    
+
     case 3:
       return "Advanced";
 
@@ -102,21 +103,30 @@ function tdToString(td) {
 }
 
 function getName(name, surname) {
-  if (! name) {
-    if (! surname) {
+  if (!name) {
+    if (!surname) {
       return '';
     }
     return surname.trim();
   }
-  if (! surname) {
+  if (!surname) {
     return name.trim();
   }
 
   if (name.trim() === surname.trim()) {
-     return name.trim();
+    return name.trim();
   }
 
   return name.trim() + ' ' + surname.trim();
+}
+
+function getPassword() {
+  var passwordGenerator = new PasswordGenerator();
+  return passwordGenerator
+      .at.least(2).numbers
+      .at.most(5).uppercase
+      .with.minLength(8).with.maxLength(10).lowercase
+      .shuffle.get();
 }
 
 function MongoWriteStream(model, options) {
@@ -138,14 +148,14 @@ MongoWriteStream.prototype._write = function (csv, encoding, done) {
  * Write csv member object to mongodb.
  *
  * @param {Object} csv - member
- * @param {Number} csv.mID - -105985642,
- * @param {String} csv.mBBOLoginName - '0     weia',
- * @param {Boolean} csv.mValid - 1,
- * @param {Date} csv.mValidateDate - Wed Nov 09 2011 16:47:25 GMT+0100 (CET),
- * @param {Boolean} csv.mDisable - 1,
- * @param {Date} csv.mRegisterDate - Tue Nov 08 2011 11:35:23 GMT+0100 (CET),
- * @param {Boolean} csv.mCheckRegistration - 1,
- * @param {Date} csv.mCheckRegistrationDate - Wed Nov 09 2011 09:59:59 GMT+0100 (CET),
+ * @param {Number} csv.mID - unique identifier
+ * @param {String} csv.mBBOLoginName - name used in BBO website
+ * @param {Boolean} csv.mValid - user is validated
+ * @param {Date} csv.mValidateDate - date on which the user has been validated
+ * @param {Boolean} csv.mDisable - user is disabled
+ * @param {Date} csv.mRegisterDate - user filled in the registration form
+ * @param {Boolean} csv.mCheckRegistration - user correctly confirmed the registration (email link)
+ * @param {Date} csv.mCheckRegistrationDate - date on which the user confirmed the registration
  * @param {Boolean} csv.mBlackList - 0,
  * @param {Date} csv.mBLExpiredDate - Wed Nov 09 2011 09:59:59 GMT+0100 (CET),
  * @param {Date} csv.mBLDate - Wed Nov 09 2011 09:59:59 GMT+0100 (CET),
@@ -196,12 +206,12 @@ MongoWriteStream.prototype._writerForMember = function (csv, done) {
   var self = this;
   var member = {};
   var email = sanitizeEmail(csv.mEMail);
-  if (email !== csv.mEMail.trim()) {
+  if (! csv.mEMail || email !== csv.mEMail.trim()) {
     console.error('Modified email for ' + csv.mBBOLoginName + ' from ' + csv.mEMail + ' in ' + email);
   }
 
   member.bboName = csv.mBBOLoginName;
-  member.password = (member.bboName === 'pensando' ? 'moneymoney' : member.bboName);
+  member.password = (member.bboName === 'pensando' ? 'moneymoney' : getPassword());
   member.name = getName(csv.mName, csv.mSurname);
   member.nation = csv.mCountry.trim();
   member.emails = [email];
@@ -209,9 +219,17 @@ MongoWriteStream.prototype._writerForMember = function (csv, done) {
     member.telephones = [csv.mTelephone.trim()];
   }
   member.level = skillToString(csv.mSkillLevel);
-  member.registeredAt = csv.mRegisterDate;
+  if (csv.mCheckRegistration) {
+    member.registeredAt = csv.mCheckRegistrationDate;
+    if (moment(member.registeredAt).isValid()) {
+      member.registeredAt = moment.utc().toDate();
+    }
+  }
   if (csv.mValid) {
     member.validatedAt = csv.mValidateDate;
+    if (!moment(member.validatedAt).isValid()) {
+      member.validatedAt = moment.utc().toDate();
+    }
   }
   member.isEnabled = (csv.mDisable === 0);
   member.role = (member.bboName === 'pensando' ? 'admin' : 'member');
@@ -240,13 +258,15 @@ MongoWriteStream.prototype._writerForMember = function (csv, done) {
       return;
     }
 
+    console.log('bboName: "' + member.bboName + '" password: "' + member.password + '"');
     if (csv.mBlackList) {
-      self._Blacklist.importEntry(csv.mBBOLoginName, csv.mBLDate, csv.mBLExpiredDate, (csv.mNote ? csv.mNote.replace(/\\n/g, '\n') : 'Blacklisted'), function (err) {
-        if (err) {
-          console.error('_writeMember: Error saving blacklist for ' + newMember.bboName, err);
-        }
-        done();
-      });
+      self._Blacklist.importEntry(csv.mBBOLoginName, csv.mBLDate, csv.mBLExpiredDate,
+          (csv.mNote ? csv.mNote.replace(/\\n/g, '\n') : 'Blacklisted'), function (err) {
+            if (err) {
+              console.error('_writeMember: Error saving blacklist for ' + newMember.bboName, err);
+            }
+            done();
+          });
     }
     else {
       done();
@@ -291,7 +311,7 @@ MongoWriteStream.prototype._writerForTd = function (csv, done) {
   td.h11pm = sanitizeBoolean(csv.t11PM);
   td.info = sanitizeText(csv.tInfo);
 
-  var regexp = new RegExp( '^' + csv.tBBOName.trim() + '$', 'i');
+  var regexp = new RegExp('^' + csv.tBBOName.trim() + '$', 'i');
   this._Members.findOne({bboName: regexp}, function (err, member) {
     if (err) {
       console.error('_writeTd: Error finding td ' + csv.tBBOName, err);
@@ -299,7 +319,7 @@ MongoWriteStream.prototype._writerForTd = function (csv, done) {
       return;
     }
 
-    if (! member) {
+    if (!member) {
       console.error('_writeTd: No member with name ' + csv.tBBOName, err);
       done();
       return;
@@ -307,7 +327,7 @@ MongoWriteStream.prototype._writerForTd = function (csv, done) {
 
     var email = sanitizeEmail(csv.tEmail);
     td.emails = member.emails;
-    if (! _.isEmpty(email)) {
+    if (!_.isEmpty(email)) {
       if (td.emails.indexOf(email) < 0) {
         td.emails.push(email);
       }
@@ -315,8 +335,8 @@ MongoWriteStream.prototype._writerForTd = function (csv, done) {
 
     var tel = (csv.tTelephone ? csv.tTelephone.trim() : null);
     td.telephones = member.telephones;
-    if (! _.isEmpty(tel)) {
-      if (! td.telephones) { td.telephones = []; }
+    if (!_.isEmpty(tel)) {
+      if (!td.telephones) { td.telephones = []; }
       if (td.telephones.indexOf(tel) <= 0) {
         td.telephones.push(tel);
       }
@@ -326,7 +346,7 @@ MongoWriteStream.prototype._writerForTd = function (csv, done) {
       if (err) {
         console.error('_writeTd: Error updating td ' + csv.tBBOName, err);
       }
-      else if (! updated) {
+      else if (!updated) {
         console.error('_writeTd: Unable to update td with name ' + csv.tBBOName, err);
       }
 

@@ -20,6 +20,7 @@
     "mongoose": "~3.8.6",
     "mongoose-validator": "~1.0.2",
     "nifty-mongoose-types": "~0.0.3",
+    "password-generator": "git+ssh://git@github.com/tfd/password-generator.git",
     "underscore": "^1.7.0"
   }
 }
