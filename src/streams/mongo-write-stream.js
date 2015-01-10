@@ -209,7 +209,6 @@ MongoWriteStream.prototype._writerForMember = function (csv, done) {
   if (! csv.mEMail || email !== csv.mEMail.trim()) {
     console.error('Modified email for ' + csv.mBBOLoginName + ' from ' + csv.mEMail + ' in ' + email);
   }
-
   member.bboName = csv.mBBOLoginName;
   member.password = (member.bboName === 'pensando' ? 'moneymoney' : getPassword());
   member.name = getName(csv.mName, csv.mSurname);
@@ -219,15 +218,15 @@ MongoWriteStream.prototype._writerForMember = function (csv, done) {
     member.telephones = [csv.mTelephone.trim()];
   }
   member.level = skillToString(csv.mSkillLevel);
-  if (csv.mCheckRegistration) {
-    member.registeredAt = csv.mCheckRegistrationDate;
-    if (moment(member.registeredAt).isValid()) {
+  member.registeredAt = csv.mCheckRegistrationDate;
+  if (csv.mCheckRegistration || csv.mValid || ! csv.mDisable) {
+    if (! member.registeredAt || ! moment(member.registeredAt).isValid()) {
       member.registeredAt = moment.utc().toDate();
     }
   }
-  if (csv.mValid) {
-    member.validatedAt = csv.mValidateDate;
-    if (!moment(member.validatedAt).isValid()) {
+  member.validatedAt = csv.mValidateDate;
+  if (csv.mValid || ! csv.mDisable) {
+    if (! member.validatedAt || ! moment(member.validatedAt).isValid()) {
       member.validatedAt = moment.utc().toDate();
     }
   }
