@@ -17,6 +17,7 @@ require('moment-range');
  */
 
 var EntrySchema = new Schema({
+  td    : {type: String, default: '', required: 'td cannot be blank', trim: true},
   from  : {type: Date},
   to    : {type: Date},
   reason: {type: String, default: '', required: 'reason cannot be blank', trim: true}
@@ -34,7 +35,7 @@ var BlacklistSchema = new Schema({
  * Helper functions.
  */
 
-function handleError (msg, cb) {
+function handleError(msg, cb) {
   if (typeof cb === 'function') {
     cb(new Error(msg), null);
   }
@@ -132,13 +133,13 @@ BlacklistSchema.statics = {
 
       var fromDate = moment.utc(from);
       if (!fromDate.isValid) {
-        cd({'from': 'Value "' + from + '" is an invalid date'}, blacklist);
+        cb({'from': 'Value "' + from + '" is an invalid date'}, blacklist);
         return;
       }
 
       var toDate = moment.utc(to);
       if (!toDate.isValid) {
-        cd({'to': 'Value "' + to + '" is an invalid date'}, blacklist);
+        cb({'to': 'Value "' + to + '" is an invalid date'}, blacklist);
         return;
       }
 
@@ -146,6 +147,7 @@ BlacklistSchema.statics = {
         blacklist.entries = [];
       }
       blacklist.entries.push({
+        'td'  : 'pensando',
         'from': fromDate.toDate(),
         'to'  : toDate.toDate(),
         reason: reason

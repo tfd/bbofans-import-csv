@@ -300,7 +300,7 @@ MongoWriteStream.prototype._writerForTd = function (csv, done) {
 
   td.bboName = csv.tBBOName;
   td.name = getName(csv.tName, csv.tSurname);
-  td.role = (csv.tBBOName === 'pensando' ? 'admin' : 'td');
+  td.role = (csv.tBBOName === 'pensando' ? 'admin' : 'blacklist manager');
   td.skill = tdToString(csv.tTDSkill);
   td.h3am = sanitizeBoolean(csv.t3AM);
   td.h7am = sanitizeBoolean(csv.t7AM);
