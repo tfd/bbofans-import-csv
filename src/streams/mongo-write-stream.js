@@ -7,6 +7,72 @@ var moment = require('moment');
 var _ = require('underscore');
 var PasswordGenerator = require('password-generator');
 
+var passwords = {
+  '0 carbon'   :'DcqWaY07h',
+  '1anik'      :'hV6yI2Kg',
+  'Ali Gun'    :'5Desg2MW',
+  'BenAkiba'   :'iOqo1ud6',
+  'DiDiMoNi'   :'uDl86STM',
+  'Grey Cat'   :'ezuAp8Q8y',
+  'Lelos80te'  :'vs6nHBp7f',
+  'MIDIMA'     :'LMw8h7SK',
+  'Rockstar1'  :'vdB1pW2QN',
+  'ajm1'       :'aievFpb85',
+  'arcitect'   :'zylE8xh1',
+  'bdchats'    :'mqT0s9WQX',
+  'chakram'    :'nk11Sggm',
+  'dbltrbl'    :'j2g9DYBzM',
+  'einar268'   :'oE4gRh6g',
+  'ejm1972'    :'dZNUAp08u',
+  'hilou'      :'BkTrfc63',
+  'htiger'     :'tnvyVx47V',
+  'hunkey65'   :'Hr06wYuB',
+  'kenya3'     :'ca3ox4hC',
+  'marila'     :'GQu9x1fM',
+  'masterjosh' :'vbyh2fRW7',
+  'pensando'   :'moneymoney',
+  'pletje'     :'rhWk9xF7',
+  'sankuban'   :'qQZXt80Ud',
+  'scarletv'   :'XhZkAJx80',
+  'spiros 33'  :'Fsn8W4zu',
+  'taky'       :'cagBmt5w9',
+  'willic'     :'Hfw4Dmj4e',
+  'ygy'        :'gp5x0sZOJ'
+};
+
+var roles = {
+  '0 carbon'   :'blacklist manager',
+  '1anik'      :'td',
+  'Ali Gun'    :'td',
+  'BenAkiba'   :'td',
+  'DiDiMoNi'   :'td',
+  'Grey Cat'   :'blacklist manager',
+  'Lelos80te'  :'td',
+  'MIDIMA'     :'td',
+  'Rockstar1'  :'td',
+  'ajm1'       :'td',
+  'arcitect'   :'td',
+  'bdchats'    :'admin',
+  'chakram'    :'td',
+  'dbltrbl'    :'td',
+  'einar268'   :'td',
+  'ejm1972'    :'td',
+  'hilou'      :'td',
+  'htiger'     :'td',
+  'hunkey65'   :'td',
+  'kenya3'     :'td',
+  'marila'     :'td',
+  'masterjosh' :'td',
+  'pensando'   :'admin',
+  'pletje'     :'td',
+  'sankuban'   :'td',
+  'scarletv'   :'td',
+  'spiros 33'  :'td',
+  'taky'       :'td',
+  'willic'     :'td',
+  'ygy'        :'td'
+};
+
 function sanitizeEmail(email) {
   if (!email) {
     // No email, generate one.
@@ -120,13 +186,19 @@ function getName(name, surname) {
   return name.trim() + ' ' + surname.trim();
 }
 
-function getPassword() {
+function getPassword(name) {
+  if (passwords[name]) { return passwords[name]; }
   var passwordGenerator = new PasswordGenerator();
   return passwordGenerator
       .at.least(2).numbers
       .at.most(5).uppercase
       .with.minLength(8).with.maxLength(10).lowercase
       .shuffle.get();
+}
+
+function getRole(name, def) {
+  if (roles[name]) { return roles[name]; }
+  return def || 'member';
 }
 
 function MongoWriteStream(model, options) {
@@ -210,7 +282,7 @@ MongoWriteStream.prototype._writerForMember = function (csv, done) {
     console.error('Modified email for ' + csv.mBBOLoginName + ' from ' + csv.mEMail + ' in ' + email);
   }
   member.bboName = csv.mBBOLoginName;
-  member.password = (member.bboName === 'pensando' ? 'moneymoney' : getPassword());
+  member.password = getPassword(member.bboName);
   member.name = getName(csv.mName, csv.mSurname);
   member.nation = csv.mCountry.trim();
   member.emails = [email];
@@ -231,7 +303,7 @@ MongoWriteStream.prototype._writerForMember = function (csv, done) {
     }
   }
   member.isEnabled = (csv.mDisable === 0);
-  member.role = (member.bboName === 'pensando' ? 'admin' : 'member');
+  member.role = getRole(member.bboName);
   member.isStarPlayer = sanitizeBoolean(csv.mStarPlayer);
   member.isRbdPlayer = sanitizeBoolean(csv.mTopPlayers);
   member.isBlackListed = sanitizeBoolean(csv.mBlackList);
@@ -242,6 +314,7 @@ MongoWriteStream.prototype._writerForMember = function (csv, done) {
   member.rock.totalScores.averageScore = csv.mAverageScore;
   member.rock.totalScores.numTournaments = csv.mNumberOfRankedTournaments;
   member.rock.totalScores.awards = csv.mRank;
+  member.rock.totalScores.lastPlayedAt = csv.mLastGameDate;
   member.rbd = {};
   member.rbd.lastPlayedAt = csv.mTPLastGameDate;
   member.rbd.totalScores = {};
@@ -300,7 +373,7 @@ MongoWriteStream.prototype._writerForTd = function (csv, done) {
 
   td.bboName = csv.tBBOName;
   td.name = getName(csv.tName, csv.tSurname);
-  td.role = (csv.tBBOName === 'pensando' ? 'admin' : 'blacklist manager');
+  td.role = getRole(csv.tBBOName, 'td');
   td.skill = tdToString(csv.tTDSkill);
   td.h3am = sanitizeBoolean(csv.t3AM);
   td.h7am = sanitizeBoolean(csv.t7AM);
