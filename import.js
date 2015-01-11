@@ -26,7 +26,7 @@ if (! fs.existsSync(tdsFileName)) {
 }
 
 // if test env, load example file
-var env = process.env.NODE_ENV || 'dev';
+var env = process.env.NODE_ENV || 'prod';
 var config = require('./config/config')[env];
 
 // connect to database
